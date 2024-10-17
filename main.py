@@ -70,9 +70,85 @@ def getLineageDevices():
     return devices
 
 
+def getMobileModels():
+    oems = [
+        "apple_all_en",
+        "blackshark_en",
+        "google",
+        "honor_global_en",
+        "huawei_global_en",
+        "meizu_en",
+        "mitv_global_en",
+        "nothing",
+        "oneplus_en",
+        "oppo_global_en",
+        "realme_global_en",
+        "vivo_global_en",
+        "xiaomi_en",
+    ]
+
+    devices = []
+    for oem in oems:
+        oem_name = oem.replace("_en", "").replace("_global", "").replace("_all", "")
+
+        url = f"https://raw.githubusercontent.com/KHwang9883/MobileModels/refs/heads/master/brands/{oem}.md"
+        response = requests.get(url)
+        data = response.text
+
+        name = None
+        model = None
+        codename = None
+
+        for line in data.splitlines():
+            line = line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith("**"):
+                line = line.replace("**", "").replace(":", "").strip()
+
+                if all([m in line for m in ["(", ")", "`"]]):
+                    name = line.split("/")[0].split("(`")[0].strip()
+                    try:
+                        codename = line.split("(`")[1].replace("`)", "")
+                    except Exception:
+                        print(line)
+
+                else:
+                    name = line
+                    codename = "nan"
+
+                continue
+
+            if line.startswith("`"):
+                model, name = line.replace("`", "", 1).split("`: ")
+
+                devices.append(
+                    {
+                        "codename": codename,
+                        "retail_branding": oem_name,
+                        "marketing_name": name,
+                        "model": model,
+                        "name": (
+                            name
+                            if name.lower().startswith(oem_name.lower())
+                            else f"{oem_name} {name}"
+                        ),
+                    }
+                )
+
+    return devices
+
+
 def main():
     # TODO: Sort this list
-    devices = getPlayDevices() + getMobileDBDevices() + getLineageDevices()
+    devices = (
+        *getPlayDevices(),
+        *getMobileDBDevices(),
+        *getLineageDevices(),
+        *getMobileModels(),
+    )
 
     with open("devices.json", "w") as f:
         f.write(json.dumps(devices).replace("},", "},\n"))
